@@ -147,6 +147,22 @@ async function run() {
       const result = await userCollections.updateOne(filter, updateDoc);
       res.send(result);
     })
+
+    // security layer
+    // 1. verifyJWT
+    // 2. check email
+    app.get('/users/admin/:email', verifyJWT,  async(req, res) => {
+      const email = req.params.email;
+
+      if(req.decoded.email !== email){
+        res.send({admin: false})
+      }
+
+      const query = {email: email}
+      const user = await userCollections.findOne(query);
+      const result = {admin: user?.role === "admin"};
+      res.send(result)
+    })
     
 
     // Send a ping to confirm a successful connection
