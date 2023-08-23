@@ -32,6 +32,7 @@ async function run() {
     const menuCollections = client.db("cafe-Resto-DB").collection("menu")
     const reviewsCollections = client.db("cafe-Resto-DB").collection("reviews")
     const cartCollections = client.db("cafe-Resto-DB").collection("carts")
+    const userCollections = client.db("cafe-Resto-DB").collection("users")
 
     // menu related api
     app.get('/menu', async(req, res) => {
@@ -70,6 +71,45 @@ async function run() {
       const result = await cartCollections.deleteOne(query);
       res.send(result)
 
+    })
+
+    // User Related Api
+    app.post('/users', async(req, res) => {
+      const user = req.body;
+      console.log(user)
+      const query = {email: user.email}
+      const existingUser = await userCollections.findOne(query);
+      if(existingUser){
+        return res.send({message: 'user already exists'})
+      }
+      
+      const result = await userCollections.insertOne(user)
+      res.send(result)
+    })
+
+    app.get('/users', async(req, res) => {
+      const result = await userCollections.find().toArray();
+      res.send(result);
+    })
+
+    app.delete('/users/:id', async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await userCollections.deleteOne(query);
+      res.send(result);
+    })
+
+    // admin
+    app.patch('/users/admin/:id', async(req, res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const updateDoc = {
+        $set: {
+          role: 'admin'
+        },
+      };
+      const result = await userCollections.updateOne(filter, updateDoc);
+      res.send(result);
     })
     
 
