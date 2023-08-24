@@ -64,9 +64,33 @@ async function run() {
       res.send({token})
     })
 
+    // isAdmin middleware
+    const verifyAdmin = async(req, res, next) => {
+      const email = req.decoded.email;
+      const query = {email: email}
+      const user = await userCollections.findOne(query);
+      if(user?.role !== "admin"){
+          return res.status(403).send({error: true, message: "forbidden message"})
+      }
+      next();
+    }
+
     // menu related api
     app.get('/menu', async(req, res) => {
       const result = await menuCollections.find().toArray();
+      res.send(result)
+    })
+
+    app.post('/menu', verifyJWT, verifyAdmin,  async(req, res) => {
+      const newItem = req.body;
+      const result = await menuCollections.insertOne(newItem);
+      res.send(result);
+    })
+
+    app.delete('/menu/:id', verifyJWT,  async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)};
+      const result = await menuCollections.deleteOne(query);
       res.send(result)
     })
 
@@ -112,7 +136,7 @@ async function run() {
     // User Related Api
     app.post('/users', async(req, res) => {
       const user = req.body;
-      console.log(user)
+      // console.log(user)
       const query = {email: user.email}
       const existingUser = await userCollections.findOne(query);
       if(existingUser){
@@ -123,7 +147,11 @@ async function run() {
       res.send(result)
     })
 
-    app.get('/users', async(req, res) => {
+    // Secure apis
+    // 0. do not show secure links to those who should not see the links
+    // 1. use jwt token : verifyJWT
+    // 2. use  verifyAdmin middleware
+    app.get('/users', verifyJWT, verifyAdmin,  async(req, res) => {
       const result = await userCollections.find().toArray();
       res.send(result);
     })
