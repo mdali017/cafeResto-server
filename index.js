@@ -197,7 +197,7 @@ async function run() {
     // payment related apis
     app.post('/create-payment-intent', verifyJWT, async(req, res) => {
       const {price} = req.body;
-      const amount = price*100;
+      const amount = parseInt(price*100);
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: "usd",
@@ -220,6 +220,59 @@ async function run() {
       const deleteResult = await cartCollections.deleteMany(query)
 
       res.send({inserResult, deleteResult});
+    })
+
+
+    app.get('/admin-stats',verifyJWT, verifyAdmin, async(req, res) => {
+      const users = await userCollections.estimatedDocumentCount();
+      const products = await menuCollections.estimatedDocumentCount();
+      const orders = await paymentCollections.estimatedDocumentCount();
+
+      // best way to get sum of a field is to use group and sum operator
+      const payments = await paymentCollections.find().toArray();
+      const revenue = payments.reduce((sum, payment) => sum + payment.price, 0)
+
+      res.send({
+        revenue,
+        users,
+        products,
+        orders,
+      })
+    })
+
+    // Create Api For Home Page: 
+      app.get('/order-stats', async(req, res) => {
+          const pipeline = [
+            {
+              $lookup: {
+                from: 'menu',
+                localField: 'menuItems',
+                foreignField: '_id',
+                as: 'menuItemsData'
+              }
+            },
+            {
+              $unwind: '$menuItemsData'
+            },
+            {
+              $group: {
+                _id: '$menuItemsData.category',
+                count: {$sum: 1},
+                total: {$sum: '$menuItemsData.price'}
+              }
+            },
+            {
+              $project: {
+                category: '$_id',
+                count: 1,
+                total: {$round: ['$total', 2]},
+                _id: 0
+              }
+            }
+          ];
+
+          const result = await paymentCollections.aggregate(pipeline).toArray();
+          res.send(result)
     })
     
 
